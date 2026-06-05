@@ -178,7 +178,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         QtCore.QCoreApplication.setOrganizationName(self.ORGANIZATION_NAME)
         QtCore.QCoreApplication.setApplicationName(self.APPLICATION_NAME)
-        self.setWindowTitle("Hysteresis Parameter Identification (HPI)")
+        self.setWindowTitle(f"Hysteresis Parameter Identification (HPI) v{__version__}")
         self.setStyleSheet(
             """
             QWidget { font-family: "Segoe UI", "Microsoft YaHei UI", Arial, sans-serif; font-size: 14pt; }

@@ -15,7 +15,7 @@ python .\main.py
 After packaging, you can start the program by running the executable file:
 
 ```powershell
-HPI.exe
+HPI-v<version>.exe
 ```
 
 The application uses the built-in OpenSees module by default:

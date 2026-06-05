@@ -1,0 +1,25 @@
+Proprietary License
+
+Copyright (c) 2026 Wenchen Lie. All rights reserved.
+
+This software, Hysteresis Parameter Identification (HPI), including its
+source code, compiled binaries, documentation, user interface files, assets,
+and bundled resources, is the proprietary property of Wenchen Lie unless
+otherwise stated in writing.
+
+Permission is granted to use this software for personal, academic, or internal
+research purposes with the copyright notice preserved. Redistribution,
+sublicensing, publication, resale, commercial deployment, or creation of
+derivative works based on this software requires prior written permission from
+the copyright holder.
+
+Third-party libraries and external components included with or used by this
+software remain subject to their own licenses. This license does not grant any
+rights to OpenSees or other third-party software beyond the rights provided by
+their respective copyright holders.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE
+USE OF OR INABILITY TO USE THE SOFTWARE.

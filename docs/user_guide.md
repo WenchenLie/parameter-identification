@@ -15,7 +15,7 @@ python .\main.py
 后续打包后，也可以直接双击或运行可执行文件启动：
 
 ```powershell
-HPI.exe
+HPI-v<版本号>.exe
 ```
 
 默认使用内置 OpenSees 模块：
