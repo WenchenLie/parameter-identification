@@ -85,10 +85,16 @@ class AlgorithmSettingsDialog(QtWidgets.QDialog):
         reset_button.clicked.connect(self.reset_to_defaults)
         layout.addWidget(reset_button)
 
-        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        button_layout = QtWidgets.QHBoxLayout()
+        ok_button = QtWidgets.QPushButton("OK")
+        cancel_button = QtWidgets.QPushButton("Cancel")
+        ok_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        cancel_button.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
 
     @staticmethod
     def _specs(algorithm: str):
@@ -185,6 +191,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             QPushButton { min-height: 34px; padding: 3px 12px; }
             QPushButton#btnStart, QPushButton#btnStop,
             QPushButton#btnAddParameter, QPushButton#btnRemoveParameter,
+            QPushButton#btnDefaultMaterialParameters,
             QPushButton#btnSaveData { min-height: 40px; padding: 6px 14px; }
             QPushButton#btnStart, QPushButton#btnStop { min-width: 120px; }
             QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit { min-height: 34px; }
@@ -206,6 +213,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.history: OptimizationHistory | None = None
         self.parameter_specs: list[ParameterSpec] = []
         self.worker: IdentificationWorker | None = None
+        self.experiment_folder: Path | None = None
         self.algorithm_parameters: dict[str, dict[str, float | int]] = {
             "PSO": {
                 "population_size": 30,
@@ -361,6 +369,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         )
         if path:
             self.txtExperimentPath.setText(path)
+            self._preprocess_from_ui()
 
     def _browse_opensees(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -393,6 +402,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             settings = self._preprocess_settings()
             displacement, force = load_experiment_file(experiment_path, settings.force_scale)
             self.preprocessed = preprocess_curve(displacement, force, settings)
+            self.experiment_folder = Path(experiment_path).resolve().parent
             self._append_log(
                 f"Curve loaded: {len(self.preprocessed.displacement)} points, "
                 f"{len(self.preprocessed.skeleton_indices)} skeleton points."
@@ -655,7 +665,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not self.history or not self.preprocessed:
             self._show_error("No results to save.")
             return
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select export folder", str(Path.cwd()))
+        default_folder = self.experiment_folder or Path.cwd()
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select export folder", str(default_folder))
         if not folder:
             return
         export_dir = Path(folder) / f"identification_export_{datetime.now().strftime('%Y%m%d')}"
@@ -842,28 +853,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 warnings.append(f"{spec.name} is close to the upper bound ({spec.upper:g}).")
         if warnings:
             self._show_boundary_warning(
-                "The following parameters reached their bounds. Adjust the bounds and identify again.\n\n"
+                "The following parameters reached their bounds. Adjust the bounds and identify again.\n"
                 + "\n".join(warnings)
             )
 
     def _show_boundary_warning(self, message: str) -> None:
-        dialog = QtWidgets.QDialog(self)
-        dialog.setWindowTitle("Boundary Warning")
-        dialog.resize(680, 320)
-        layout = QtWidgets.QVBoxLayout(dialog)
-        label = QtWidgets.QLabel(message, dialog)
-        label.setWordWrap(True)
-        label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        layout.addWidget(label, 1)
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.addStretch(1)
-        ok_button = QtWidgets.QPushButton("OK", dialog)
-        ok_button.setMinimumWidth(180)
-        ok_button.clicked.connect(dialog.accept)
-        button_layout.addWidget(ok_button)
-        button_layout.addStretch(1)
-        layout.addLayout(button_layout)
-        dialog.exec_()
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Warning)
+        box.setWindowTitle("Boundary Warning")
+        box.setText(message)
+        box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        ok_button = box.button(QtWidgets.QMessageBox.Ok)
+        if ok_button is not None:
+            ok_button.setMinimumWidth(180)
+        button_box = box.findChild(QtWidgets.QDialogButtonBox)
+        if button_box is not None:
+            button_box.setCenterButtons(True)
+        box.exec_()
 
     def _open_user_guide(self, filename: str) -> None:
         guide_path = self._resource_path("docs", filename)
