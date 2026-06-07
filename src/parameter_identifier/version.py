@@ -10,10 +10,13 @@ DEFAULT_VERSION = "0.0.0"
 
 
 def get_version() -> str:
+    pyproject_version = _read_pyproject_version()
+    if pyproject_version != DEFAULT_VERSION:
+        return pyproject_version
     try:
         return metadata.version(DIST_NAME)
     except metadata.PackageNotFoundError:
-        return _read_pyproject_version()
+        return DEFAULT_VERSION
 
 
 def _read_pyproject_version() -> str:
