@@ -2,6 +2,26 @@
 
 PyQt5 desktop application for identifying OpenSees uniaxial material parameters from an experimental hysteresis curve.
 
+## Screenshots
+
+### Parameter Definition
+
+Configure the experimental data, optimization algorithm, OpenSees material script, and parameter bounds in the Parameter Definition tab.
+
+![Parameter Definition tab](docs/images/parameter-definition.png)
+
+### Identification Results
+
+Inspect parameter histories, RMSE convergence, the experimental/simulated hysteresis comparison, and the identified parameter values in the Results tab.
+
+![Results tab](docs/images/results.png)
+
+### Hysteresis Evolution
+
+The exported animation shows how the simulated hysteresis curve converges toward the experimental curve across optimization generations.
+
+![Hysteresis comparison across generations](docs/images/hysteresis-evolution.gif)
+
 ## Run
 
 ```powershell
