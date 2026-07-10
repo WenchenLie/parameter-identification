@@ -41,9 +41,9 @@ def build(params, context):
     b = params["b"]
     # editable body starts here
     mats = [
-        ["Steel01", "tag1", fy, E0, b],
+        ["Steel01", 1, fy, E0, b],
     ]
-    ctrl_tag = "tag1"
+    ctrl_tag = 1
     # editable body ends here
     return mats, ctrl_tag
 ```

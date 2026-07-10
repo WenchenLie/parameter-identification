@@ -95,12 +95,12 @@ GA 参数包括：
 
 ```python
     mats = [
-        ["Steel01", "tag1", fy, E0, b],
+        ["Steel01", 1, fy, E0, b],
     ]
-    ctrl_tag = "tag1"
+    ctrl_tag = 1
 ```
 
-可以在中间代码块中定义多个 OpenSees 材料，最终通过 `ctrl_tag` 指定控制材料。程序会自动补齐：
+可以在中间代码块中定义多个 OpenSees 材料。材料编号直接使用从 1 开始的正整数，最终通过 `ctrl_tag` 指定控制材料。程序会自动补齐：
 
 ```python
 def build(params, context):

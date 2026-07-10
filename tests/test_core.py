@@ -9,6 +9,7 @@ from parameter_identifier.core.material import (
     compile_material_builder,
     default_material,
     flatten_parameters,
+    validate_material_build_result,
     vector_to_material_params,
 )
 from parameter_identifier.core.preprocessing import PreprocessSettings, preprocess_curve
@@ -32,7 +33,18 @@ def test_compile_default_material_script() -> None:
     build = compile_material_builder(compose_material_code(material.parameters, material.code))
     mats, ctrl_tag = build({"fy": 200.0, "E0": 3000.0, "b": 0.02}, {})
     assert mats[0][0] == "Steel01"
-    assert ctrl_tag == "tag1"
+    assert mats[0][1] == 1
+    assert ctrl_tag == 1
+
+
+def test_material_tags_must_be_positive_integers() -> None:
+    with np.testing.assert_raises_regex(ValueError, "positive integer"):
+        validate_material_build_result("Material", ([["Steel01", "tag1", 200.0, 3000.0, 0.02]], "tag1"))
+
+
+def test_control_tag_must_refer_to_defined_material() -> None:
+    with np.testing.assert_raises_regex(ValueError, "defined in mats"):
+        validate_material_build_result("Material", ([["Steel01", 1, 200.0, 3000.0, 0.02]], 2))
 
 
 def test_parameter_vector_mapping() -> None:

@@ -75,7 +75,6 @@ class IdentificationProblem:
             mats,
             ctrl_tag,
             self.data.displacement,
-            tag_offset=1,
         )
 
     def objective(self, vector: np.ndarray) -> tuple[float, np.ndarray]:

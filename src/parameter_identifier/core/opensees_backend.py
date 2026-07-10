@@ -59,28 +59,16 @@ class OpenSeesPythonBackend:
     def calculate_uniaxial_response(
         self,
         mats: list[list[Any]],
-        ctrl_tag: str | int,
+        ctrl_tag: int,
         displacement: np.ndarray,
-        tag_offset: int = 1,
     ) -> np.ndarray:
         ops = self.ops
         ops.wipe()
-        mapped_ctrl_tag = self._map_tag(ctrl_tag, tag_offset)
         for command in mats:
-            mapped_command = [self._map_tag(item, tag_offset) for item in command]
-            ops.uniaxialMaterial(*mapped_command)
-        ops.testUniaxialMaterial(mapped_ctrl_tag)
+            ops.uniaxialMaterial(*command)
+        ops.testUniaxialMaterial(ctrl_tag)
         force = np.zeros(len(displacement), dtype=float)
         for i, ui in enumerate(displacement):
             ops.setStrain(float(ui))
             force[i] = float(ops.getStress())
         return force
-
-    @staticmethod
-    def _map_tag(value: Any, tag_offset: int) -> Any:
-        if isinstance(value, str) and value.startswith("tag"):
-            suffix = value[3:]
-            if not suffix.isdigit():
-                raise ValueError(f"Material tag must use format tag<number>, got {value!r}.")
-            return int(suffix) * 100000 + tag_offset
-        return value

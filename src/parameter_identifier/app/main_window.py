@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import traceback
 from io import BytesIO
 from dataclasses import replace
 from datetime import datetime
@@ -23,6 +25,7 @@ from parameter_identifier.core.identification import (
 from parameter_identifier.core.material import (
     MaterialModelSpec,
     ParameterSpec,
+    compile_material_builder,
     compose_material_code,
     default_material,
     material_prefix_text,
@@ -138,6 +141,51 @@ class CodeEditor(QtWidgets.QPlainTextEdit):
         super().keyPressEvent(event)
 
 
+class TerminalStream(QtCore.QObject):
+    text_written = QtCore.pyqtSignal(str)
+
+    def __init__(self, original_stream, parent=None) -> None:
+        super().__init__(parent)
+        self.original_stream = original_stream
+
+    def write(self, text: str) -> int:
+        if self.original_stream is not None:
+            self.original_stream.write(text)
+        if text:
+            self.text_written.emit(text)
+        return len(text)
+
+    def flush(self) -> None:
+        if self.original_stream is not None:
+            self.original_stream.flush()
+
+
+class TerminalOutputDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Terminal")
+        self.resize(900, 560)
+        self.setMinimumSize(560, 320)
+        layout = QtWidgets.QVBoxLayout(self)
+        self.output = QtWidgets.QPlainTextEdit(self)
+        self.output.setReadOnly(True)
+        self.output.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        layout.addWidget(self.output, 1)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close, parent=self)
+        clear_button = buttons.addButton("Clear", QtWidgets.QDialogButtonBox.ResetRole)
+        clear_button.clicked.connect(self.output.clear)
+        buttons.rejected.connect(self.close)
+        layout.addWidget(buttons)
+
+    @QtCore.pyqtSlot(str)
+    def append_output(self, text: str) -> None:
+        cursor = self.output.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.insertText(text)
+        self.output.setTextCursor(cursor)
+        self.output.ensureCursorVisible()
+
+
 class IdentificationWorker(QtCore.QThread):
     progress_changed = QtCore.pyqtSignal(int, int, float)
     finished_ok = QtCore.pyqtSignal(object, object)
@@ -172,7 +220,8 @@ class IdentificationWorker(QtCore.QThread):
             )
             self.finished_ok.emit(history, parameter_specs)
         except Exception as exc:  # noqa: BLE001
-            self.failed.emit(str(exc))
+            traceback.print_exc()
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -185,6 +234,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         QtCore.QCoreApplication.setOrganizationName(self.ORGANIZATION_NAME)
         QtCore.QCoreApplication.setApplicationName(self.APPLICATION_NAME)
         self.setWindowTitle(f"Hysteresis Parameter Identification (HPI) v{__version__}")
+        self.terminal_output = TerminalOutputDialog(self)
+        self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
+        self._stdout_stream = TerminalStream(self._original_stdout, self)
+        self._stderr_stream = TerminalStream(self._original_stderr, self)
+        self._stdout_stream.text_written.connect(self.terminal_output.append_output)
+        self._stderr_stream.text_written.connect(self.terminal_output.append_output)
+        sys.stdout = self._stdout_stream
+        sys.stderr = self._stderr_stream
         self.setStyleSheet(
             """
             QWidget { font-family: "Segoe UI", "Microsoft YaHei UI", Arial, sans-serif; font-size: 14pt; }
@@ -257,6 +315,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         action_default_pso = defaults_menu.addAction("PSO")
         action_default_ga = defaults_menu.addAction("GA")
         action_about = menu.addAction("About")
+        action_terminal_output = QtWidgets.QAction("Terminal", self)
+        action_terminal_output.setToolTip("Show captured stdout, stderr, and error tracebacks")
+        menu.addAction(action_terminal_output)
         menu.addSeparator()
         action_exit = menu.addAction("Exit")
         action_user_guide_cn.triggered.connect(lambda: self._open_user_guide("user_guide.md"))
@@ -264,7 +325,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         action_default_pso.triggered.connect(lambda: self._edit_default_algorithm_parameters("PSO"))
         action_default_ga.triggered.connect(lambda: self._edit_default_algorithm_parameters("GA"))
         action_about.triggered.connect(self._show_about)
+        action_terminal_output.triggered.connect(self._show_terminal_output)
         action_exit.triggered.connect(self.close)
+
+    def _show_terminal_output(self) -> None:
+        self.terminal_output.show()
+        self.terminal_output.raise_()
+        self.terminal_output.activateWindow()
 
     @staticmethod
     def _resource_path(*parts: str) -> Path:
@@ -521,6 +588,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def _start_identification(self) -> None:
         try:
             material = self._save_material_from_editor()
+            compile_material_builder(compose_material_code(material.parameters, material.code))
             data = self.preprocessed or self._preprocess_from_ui()
             if data is None:
                 return
@@ -552,7 +620,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self._append_log("Run started.")
             self.worker.start()
         except Exception as exc:  # noqa: BLE001
-            self._show_error(str(exc))
+            traceback.print_exc()
+            self._show_error(f"{type(exc).__name__}: {exc}")
 
     def _write_run_header(self, material: MaterialModelSpec, settings: IdentificationSettings, opensees_path: str) -> None:
         self._append_log(f"Start time: {datetime.now().isoformat(timespec='seconds')}")
@@ -840,6 +909,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def _show_error(self, message: str) -> None:
         QtWidgets.QMessageBox.critical(self, "Error", message)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if sys.stdout is self._stdout_stream:
+            sys.stdout = self._original_stdout
+        if sys.stderr is self._stderr_stream:
+            sys.stderr = self._original_stderr
+        super().closeEvent(event)
 
     def _warn_boundary_parameters(self) -> None:
         if not self.history or not self.parameter_specs:

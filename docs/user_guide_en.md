@@ -87,12 +87,12 @@ Editable example:
 
 ```python
     mats = [
-        ["Steel01", "tag1", fy, E0, b],
+        ["Steel01", 1, fy, E0, b],
     ]
-    ctrl_tag = "tag1"
+    ctrl_tag = 1
 ```
 
-You may define multiple OpenSees materials in the editable block and set `ctrl_tag` to the controlling material tag.
+You may define multiple OpenSees materials in the editable block. Use positive integers starting from 1 as material tags and set `ctrl_tag` to the controlling material tag.
 
 ### Material Parameters
 

@@ -29,9 +29,9 @@ class MaterialModelSpec:
 
 
 DEFAULT_MATERIAL_BODY = """    mats = [
-        ["Steel01", "tag1", fy, E0, b],
+        ["Steel01", 1, fy, E0, b],
     ]
-    ctrl_tag = "tag1"
+    ctrl_tag = 1
 """
 
 DEFAULT_MATERIAL_CODE = DEFAULT_MATERIAL_BODY
@@ -90,9 +90,9 @@ def legacy_default_full_code() -> str:
     E0 = params["E0"]
     b = params["b"]
     mats = [
-        ["Steel01", "tag1", fy, E0, b],
+        ["Steel01", 1, fy, E0, b],
     ]
-    ctrl_tag = "tag1"
+    ctrl_tag = 1
     return mats, ctrl_tag
 """
 
@@ -144,13 +144,13 @@ def build_material_commands(
     material: MaterialModelSpec,
     params: dict[str, float],
     context: dict[str, Any] | None = None,
-) -> tuple[list[list[Any]], str | int]:
+) -> tuple[list[list[Any]], int]:
     builder = compile_material_builder(compose_material_code(material.parameters, material.code))
     result = builder(params, context or {})
     return validate_material_build_result(material.name, result)
 
 
-def validate_material_build_result(material_name: str, result: Any) -> tuple[list[list[Any]], str | int]:
+def validate_material_build_result(material_name: str, result: Any) -> tuple[list[list[Any]], int]:
     if not isinstance(result, tuple) or len(result) != 2:
         raise ValueError(f"{material_name}: build must return (mats, ctrl_tag).")
     mats, ctrl_tag = result
@@ -159,6 +159,14 @@ def validate_material_build_result(material_name: str, result: Any) -> tuple[lis
     for command in mats:
         if not isinstance(command, list) or len(command) < 2:
             raise ValueError(f"{material_name}: every material command must be a list with at least two items.")
+        tag = command[1]
+        if isinstance(tag, bool) or not isinstance(tag, int) or tag < 1:
+            raise ValueError(f"{material_name}: every material tag must be a positive integer starting from 1.")
+    if isinstance(ctrl_tag, bool) or not isinstance(ctrl_tag, int) or ctrl_tag < 1:
+        raise ValueError(f"{material_name}: ctrl_tag must be a positive integer starting from 1.")
+    material_tags = {command[1] for command in mats}
+    if ctrl_tag not in material_tags:
+        raise ValueError(f"{material_name}: ctrl_tag must refer to a tag defined in mats.")
     return mats, ctrl_tag
 
 
